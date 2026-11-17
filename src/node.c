@@ -373,23 +373,23 @@ JadeNode *copy_node(JadeState *jade, JadeNode *n){
     case JADE_DEF_NODE:
         return create_def(jade, n->pos, copy_node(jade, n->u.def.name), copy_node(jade, n->u.def.init));
     case JADE_IF_NODE:
-        return create_if(jade, n->pos, n->u.if_.test, n->u.if_.body, n->u.if_.alt);
+        return create_if(jade, n->pos, copy_node(jade, n->u.if_.test), copy_node(jade, n->u.if_.body), copy_node(jade, n->u.if_.alt));
     case JADE_WHILE_NODE:
-        return create_while(jade, n->pos, n->u.loop.cond, n->u.loop.body);
+        return create_while(jade, n->pos, copy_node(jade, n->u.loop.cond), copy_node(jade, n->u.loop.body));
     case JADE_UNTIL_NODE:
-        return create_until(jade, n->pos, n->u.loop.cond, n->u.loop.body);
+        return create_until(jade, n->pos, copy_node(jade, n->u.loop.cond), copy_node(jade, n->u.loop.body));
     case JADE_FOR_NODE:
-        return create_for(jade, n->pos, n->u.for_.variables, n->u.for_.range, n->u.for_.body);
+        return create_for(jade, n->pos, copy_nodelist(jade, n->u.for_.variables), copy_node(jade, n->u.for_.range), copy_node(jade, n->u.for_.body));
     case JADE_BREAK_NODE:
-        return create_break(jade, n->pos, n->u.control_transfer.result);
+        return create_break(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
     case JADE_CONTINUE_NODE:
-        return create_continue(jade, n->pos, n->u.control_transfer.result);
+        return create_continue(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
     case JADE_RETURN_NODE:
-        return create_return(jade, n->pos, n->u.control_transfer.result);
+        return create_return(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
     case JADE_THROW_NODE:
-        return create_throw(jade, n->pos, n->u.control_transfer.result);
+        return create_throw(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
     case JADE_TRY_NODE:
-        return create_try(jade, n->pos, n->u.try.body, n->u.try.variable, n->u.try.rescue, n->u.try.ensure);
+        return create_try(jade, n->pos, copy_node(jade, n->u.try.body), copy_node(jade, n->u.try.variable), copy_node(jade, n->u.try.rescue), copy_node(jade, n->u.try.ensure));
     case JADE_IDENTIFIER_NODE:
         return create_identifier(jade, n->pos, jstrdup(jade, n->u.identifier.name));
     case JADE_INT_LITERAL_NODE:
@@ -433,8 +433,8 @@ JadeNode *copy_node(JadeState *jade, JadeNode *n){
     case JADE_MODULO_NODE:
         return create_binary_expression(
             jade, n->pos, n->type,
-            n->u.binary_expression.left,
-            n->u.binary_expression.right
+            copy_node(jade, n->u.binary_expression.left),
+            copy_node(jade, n->u.binary_expression.right)
         );
     case JADE_LET_NODE:
         return create_let(jade, n->pos, copy_node(jade, n->u.let.name), copy_node(jade, n->u.let.operand));
