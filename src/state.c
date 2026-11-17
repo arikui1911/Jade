@@ -5,7 +5,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include <assert.h>
 #include <khash.h>
 #include "./vector_using.h"
 
@@ -45,6 +44,7 @@ JadeState *jade_new(void){
 
     jade->heap = NULL;
     jade->heap_size = 0;
+    vector_init(jade->nodes);
     vector_init(jade->symbol_names);
     vector_init(jade->arena);
     jade->builtin = env_new(jade, NULL);
@@ -60,7 +60,8 @@ void jade_dispose(JadeState *jade){
     int i;
     if (jade == NULL) return;
 
-    dispose_node(jade->toplevel);
+    for (i = 0; i < vector_len(jade->nodes); i++) dispose_node(vector_get(jade->nodes, i));
+    vector_destroy(jade, jade->nodes);
 
     kh_destroy(symbols, jade->symbol_table);
     for (i = 0; i < vector_len(jade->symbol_names); i++) free(vector_get(jade->symbol_names, i));

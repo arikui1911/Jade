@@ -18,8 +18,7 @@ JadeValue function_new(JadeState *jade, JadeNodeList *params, JadeNode *body){
         vector_push(jade, o->u.function.u.user.parameters, JadeNode*, jade_intern(jade, pos->node->u.identifier.name));
     }
 
-    o->u.function.u.user.body = copy_node(jade, body);
-
+    o->u.function.u.user.body = body;
     return object_reference(o);
 }
 

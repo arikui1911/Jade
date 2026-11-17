@@ -801,9 +801,9 @@ static JadeNode *parse_fetch(JadeParser *p, JadeNode *left, Token op){
 static JadeNode *create_assign(JadeParser *p, JadeNode *left, JadeNode *right){
     switch (left->type) {
     case JADE_IDENTIFIER_NODE:
-        return create_let(p->jade, between(left->pos, right->pos), copy_node(p->jade, left), right);
+        return create_let(p->jade, between(left->pos, right->pos), left, right);
     case JADE_FETCH_NODE:
-        return create_store(p->jade, between(left->pos, right->pos), copy_node(p->jade, left), right);
+        return create_store(p->jade, between(left->pos, right->pos), left, right);
     default:
         jade_raise(
             p->jade, "(%d:%d):(%d:%d): invalid lvalue",

@@ -2,6 +2,8 @@
 #include <jade/ast.h>
 #include "./util.h"
 #include "./node.h"
+#include "./state.h"
+#include "./vector_using.h"
 #include <stdlib.h>
 #include <assert.h>
 
@@ -9,6 +11,8 @@ static JadeNode *create(JadeState *jade, JadeNodeType type, JadePosition pos){
     JadeNode *n = jmalloc(jade, sizeof(JadeNode));
     n->type = type;
     n->pos = pos;
+
+    vector_push(jade, jade->nodes, JadeNode*, n);
     return n;
 }
 
@@ -224,243 +228,10 @@ JadeNode *create_match_clause(JadeState *jade, JadePosition pos, JadeNodeList *p
     return n;
 }
 
-static void dispose_nodelist(JadeNodeList *list){
-    JadeNodeList *pos, *next;
-    for (pos = list; pos != NULL; pos = next) {
-        next = pos->next;
-        dispose_node(pos->node);
-        free(pos);
-    }
-}
-
 void dispose_node(JadeNode *n){
     if (n == NULL) return;
-    switch (n->type) {
-    case JADE_BLOCK_NODE:
-        dispose_nodelist(n->u.block.statements);
-        break;
-    case JADE_EXPRESSION_STATEMENT_NODE:
-        dispose_node(n->u.expression_statement.expression);
-        break;
-    case JADE_DEF_NODE:
-        dispose_node(n->u.def.name);
-        dispose_node(n->u.def.init);
-        break;
-    case JADE_IF_NODE:
-        dispose_node(n->u.if_.test);
-        dispose_node(n->u.if_.body);
-        dispose_node(n->u.if_.alt);
-        break;
-    case JADE_WHILE_NODE:
-    case JADE_UNTIL_NODE:
-        dispose_node(n->u.loop.cond);
-        dispose_node(n->u.loop.body);
-        break;
-    case JADE_FOR_NODE:
-        dispose_nodelist(n->u.for_.variables);
-        dispose_node(n->u.for_.range);
-        dispose_node(n->u.for_.body);
-        break;
-    case JADE_BREAK_NODE:
-    case JADE_CONTINUE_NODE:
-    case JADE_RETURN_NODE:
-    case JADE_THROW_NODE:
-        dispose_node(n->u.control_transfer.result);
-        break;
-    case JADE_TRY_NODE:
-        dispose_node(n->u.try.body);
-        dispose_node(n->u.try.variable);
-        dispose_node(n->u.try.rescue);
-        dispose_node(n->u.try.ensure);
-        break;
-    case JADE_IDENTIFIER_NODE:
-        free(n->u.identifier.name);
-        break;
-    case JADE_INT_LITERAL_NODE:
-    case JADE_FLOAT_LITERAL_NODE:
-        break;
-    case JADE_STRING_LITERAL_NODE:
-        free(n->u.string_literal.value);
-        break;
-    case JADE_BOOLEAN_LITERAL_NODE:
-    case JADE_NIL_LITERAL_NODE:
-        break;
-    case JADE_ARRAY_LITERAL_NODE:
-        dispose_nodelist(n->u.array_literal.elements);
-        break;
-    case JADE_TABLE_LITERAL_NODE:
-        dispose_nodelist(n->u.table_literal.entries);
-        break;
-    case JADE_TABLE_ENTRY_NODE:
-        dispose_node(n->u.table_entry.key);
-        dispose_node(n->u.table_entry.value);
-        break;
-    case JADE_FUNCTION_LITERAL_NODE:
-        dispose_nodelist(n->u.function_literal.parameters);
-        dispose_node(n->u.function_literal.body);
-        break;
-    case JADE_MINUS_NODE:
-    case JADE_NOT_NODE:
-        dispose_node(n->u.unary_expression.operand);
-        break;
-    case JADE_LOGICAL_OR_NODE:
-    case JADE_LOGICAL_AND_NODE:
-    case JADE_EQUAL_NODE:
-    case JADE_NOT_EQUAL_NODE:
-    case JADE_LESS_THAN_NODE:
-    case JADE_GREATER_THAN_NODE:
-    case JADE_LESS_THAN_EQUAL_NODE:
-    case JADE_GREATER_THAN_EQUAL_NODE:
-    case JADE_ADDITION_NODE:
-    case JADE_SUBTRACTION_NODE:
-    case JADE_MULTIPLICATION_NODE:
-    case JADE_DIVISION_NODE:
-    case JADE_MODULO_NODE:
-        dispose_node(n->u.binary_expression.left);
-        dispose_node(n->u.binary_expression.right);
-        break;
-    case JADE_LET_NODE:
-        dispose_node(n->u.let.name);
-        dispose_node(n->u.let.operand);
-        break;
-    case JADE_CALL_NODE:
-        dispose_nodelist(n->u.call.arguments);
-        dispose_node(n->u.call.function);
-        break;
-    case JADE_FETCH_NODE:
-        dispose_node(n->u.fetch.container);
-        dispose_node(n->u.fetch.key);
-        break;
-    case JADE_STORE_NODE:
-        dispose_node(n->u.store.fetch);
-        dispose_node(n->u.store.value);
-        break;
-    case JADE_MATCH_NODE:
-        dispose_node(n->u.match.operand);
-        dispose_node(n->u.match.variable);
-        dispose_nodelist(n->u.match.clauses);
-        dispose_node(n->u.match.otherwise);
-        break;
-    case JADE_MATCH_CLAUSE_NODE:
-        dispose_nodelist(n->u.match_clause.pattern);
-        dispose_node(n->u.match_clause.body);
-        break;
-    }
+    if (n->type == JADE_STRING_LITERAL_NODE) free(n->u.string_literal.value);
     free(n);
-}
-
-static JadeNodeList *copy_nodelist(JadeState *jade, JadeNodeList *list){
-    JadeNodeList head = {NULL, NULL};
-    JadeNodeList *pos = &head;
-
-    for (; list != NULL; list = list->next) {
-        pos->next = jmalloc(jade, sizeof(JadeNodeList));
-        pos = pos->next;
-        pos->next = NULL;
-        pos->node = copy_node(jade, list->node);
-    }
-
-    return head.next;
-}
-
-JadeNode *copy_node(JadeState *jade, JadeNode *n){
-    if (n == NULL) return n;
-    switch (n->type) {
-    case JADE_BLOCK_NODE:
-        return create_block(jade, n->pos, copy_nodelist(jade, n->u.block.statements));
-    case JADE_EXPRESSION_STATEMENT_NODE:
-        return create_expression_statement(jade, n->pos, copy_node(jade, n->u.expression_statement.expression));
-    case JADE_DEF_NODE:
-        return create_def(jade, n->pos, copy_node(jade, n->u.def.name), copy_node(jade, n->u.def.init));
-    case JADE_IF_NODE:
-        return create_if(jade, n->pos, copy_node(jade, n->u.if_.test), copy_node(jade, n->u.if_.body), copy_node(jade, n->u.if_.alt));
-    case JADE_WHILE_NODE:
-        return create_while(jade, n->pos, copy_node(jade, n->u.loop.cond), copy_node(jade, n->u.loop.body));
-    case JADE_UNTIL_NODE:
-        return create_until(jade, n->pos, copy_node(jade, n->u.loop.cond), copy_node(jade, n->u.loop.body));
-    case JADE_FOR_NODE:
-        return create_for(jade, n->pos, copy_nodelist(jade, n->u.for_.variables), copy_node(jade, n->u.for_.range), copy_node(jade, n->u.for_.body));
-    case JADE_BREAK_NODE:
-        return create_break(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
-    case JADE_CONTINUE_NODE:
-        return create_continue(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
-    case JADE_RETURN_NODE:
-        return create_return(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
-    case JADE_THROW_NODE:
-        return create_throw(jade, n->pos, copy_node(jade, n->u.control_transfer.result));
-    case JADE_TRY_NODE:
-        return create_try(jade, n->pos, copy_node(jade, n->u.try.body), copy_node(jade, n->u.try.variable), copy_node(jade, n->u.try.rescue), copy_node(jade, n->u.try.ensure));
-    case JADE_IDENTIFIER_NODE:
-        return create_identifier(jade, n->pos, jstrdup(jade, n->u.identifier.name));
-    case JADE_INT_LITERAL_NODE:
-        return create_int_literal(jade, n->pos, n->u.int_literal.value);
-    case JADE_FLOAT_LITERAL_NODE:
-        return create_float_literal(jade, n->pos, n->u.float_literal.value);
-    case JADE_STRING_LITERAL_NODE:
-        return create_string_literal(jade, n->pos, jstrdup(jade, n->u.string_literal.value));
-    case JADE_BOOLEAN_LITERAL_NODE:
-        return create_boolean_literal(jade, n->pos, n->u.boolean_literal.value);
-    case JADE_NIL_LITERAL_NODE:
-        return create_nil_literal(jade, n->pos);
-    case JADE_ARRAY_LITERAL_NODE:
-        return create_array_literal(jade, n->pos, copy_nodelist(jade, n->u.array_literal.elements));
-    case JADE_TABLE_LITERAL_NODE:
-        return create_table_literal(jade, n->pos, copy_nodelist(jade, n->u.table_literal.entries));
-    case JADE_TABLE_ENTRY_NODE:
-        return create_table_entry(jade, n->pos, copy_node(jade, n->u.table_entry.key), copy_node(jade, n->u.table_entry.value));
-    case JADE_FUNCTION_LITERAL_NODE:
-        return create_function_literal(
-            jade, n->pos,
-            copy_nodelist(jade, n->u.function_literal.parameters),
-            copy_node(jade, n->u.function_literal.body)
-        );
-    case JADE_MINUS_NODE:
-        return create_minus(jade, n->pos, copy_node(jade, n->u.unary_expression.operand));
-    case JADE_NOT_NODE:
-        return create_not(jade, n->pos, copy_node(jade, n->u.unary_expression.operand));
-    case JADE_LOGICAL_OR_NODE:
-    case JADE_LOGICAL_AND_NODE:
-    case JADE_EQUAL_NODE:
-    case JADE_NOT_EQUAL_NODE:
-    case JADE_LESS_THAN_NODE:
-    case JADE_GREATER_THAN_NODE:
-    case JADE_LESS_THAN_EQUAL_NODE:
-    case JADE_GREATER_THAN_EQUAL_NODE:
-    case JADE_ADDITION_NODE:
-    case JADE_SUBTRACTION_NODE:
-    case JADE_MULTIPLICATION_NODE:
-    case JADE_DIVISION_NODE:
-    case JADE_MODULO_NODE:
-        return create_binary_expression(
-            jade, n->pos, n->type,
-            copy_node(jade, n->u.binary_expression.left),
-            copy_node(jade, n->u.binary_expression.right)
-        );
-    case JADE_LET_NODE:
-        return create_let(jade, n->pos, copy_node(jade, n->u.let.name), copy_node(jade, n->u.let.operand));
-    case JADE_CALL_NODE:
-        return create_call(
-            jade, n->pos,
-            copy_node(jade, n->u.call.function),
-            copy_nodelist(jade, n->u.call.arguments)
-        );
-    case JADE_FETCH_NODE:
-        return create_fetch(jade, n->pos, copy_node(jade, n->u.fetch.container), copy_node(jade, n->u.fetch.key));
-    case JADE_STORE_NODE:
-        return create_store(jade, n->pos, copy_node(jade, n->u.store.fetch), copy_node(jade, n->u.store.value));
-    case JADE_MATCH_NODE:
-        return create_match(
-            jade, n->pos,
-            copy_node(jade, n->u.match.operand),
-            copy_node(jade, n->u.match.variable),
-            copy_nodelist(jade, n->u.match.clauses),
-            copy_node(jade, n->u.match.otherwise)
-        );
-    case JADE_MATCH_CLAUSE_NODE:
-        return create_match_clause(jade, n->pos, copy_nodelist(jade, n->u.match_clause.pattern), copy_node(jade, n->u.match_clause.body));
-    default:
-        assert(0);
-    }
 }
 
 static void dump_nodelist(JadeNodeList *list, FILE *fp, int lv){

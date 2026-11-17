@@ -30,6 +30,7 @@ struct JadeState {
     int jump_ready;
     const char *source_filename;
     JadeNode *toplevel;
+    vector_t(JadeNode*) nodes;
     khash_t(symbols) *symbol_table;
     vector_t(char*) symbol_names;
     JadeObject *heap;
