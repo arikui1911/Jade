@@ -18,16 +18,6 @@ JadeParser *jade_parser_new(JadeState *jade){
 
 void jade_parser_dispose(JadeParser *p){
     if (p == NULL) return;
-
-    if (p->toplevel != NULL) {
-        JadeNode *pos, *next;
-
-        for (pos = p->toplevel->u.block.statements; pos != NULL; pos = next) {
-            next = pos->u.list.next;
-            dispose_node(pos->u.list.node);
-        }
-    }
-
     free(p);
 }
 
@@ -229,7 +219,7 @@ static JadeNode *parse_block(JadeParser *p){
 }
 
 static JadeNode *parse_comma_list(JadeParser *p, TokenType term, Token *dest, JadeNode *(*f)(JadeParser *)){
-    JadeNode *list;
+    JadeNode *list = NULL;
     Token t;
 
     if (expect(p, term, dest)) return NULL;
