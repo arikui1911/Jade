@@ -7,15 +7,20 @@
 #include <assert.h>
 #include "./vector_using.h"
 
-JadeValue function_new(JadeState *jade, JadeNodeList *params, JadeNode *body){
-    JadeNodeList *pos;
+JadeValue function_new(JadeState *jade, JadeNode *params, JadeNode *body){
+    JadeNode *pos;
     JadeObject *o = object_new(jade, JADE_FUNCTION);
 
     o->u.function.type = JADE_USER_FUNCTION;
 
     vector_init(o->u.function.u.user.parameters);
-    for (pos = params; pos != NULL; pos = pos->next) {
-        vector_push(jade, o->u.function.u.user.parameters, JadeNode*, jade_intern(jade, pos->node->u.identifier.name));
+    for (pos = params; pos != NULL; pos = pos->u.list.next) {
+        vector_push(
+            jade,
+            o->u.function.u.user.parameters,
+            JadeNode*,
+            jade_intern(jade, pos->u.list.node->u.identifier.name)
+        );
     }
 
     o->u.function.u.user.body = body;
@@ -35,7 +40,6 @@ void function_destroy(JadeObject *o){
     switch (o->u.function.type) {
     case JADE_USER_FUNCTION:
         vector_destroy(jade, o->u.function.u.user.parameters);
-        dispose_node(o->u.function.u.user.body);
         break;
     case JADE_NATIVE_FUNCTION:
         break;

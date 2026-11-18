@@ -16,7 +16,22 @@ static JadeNode *create(JadeState *jade, JadeNodeType type, JadePosition pos){
     return n;
 }
 
-JadeNode *create_block(JadeState *jade, JadePosition pos, JadeNodeList *statements){
+JadeNode *create_list_entry(JadeState *jade, JadeNode *list, JadeNode *node){
+    JadeNode *pos;
+    JadeNode *n = create(jade, JADE_LIST_NODE, node->pos);
+
+    n->u.list.next = NULL;
+    n->u.list.node = node;
+    if (list == NULL) return n;
+
+    for (pos = list; pos->u.list.next != NULL; pos = pos->u.list.next)
+        ;
+    
+    pos->u.list.next = n;
+    return list;
+}
+
+JadeNode *create_block(JadeState *jade, JadePosition pos, JadeNode *statements){
     JadeNode *n = create(jade, JADE_BLOCK_NODE, pos);
     n->u.block.statements = statements;
     return n;
@@ -45,13 +60,13 @@ JadeNode *create_while(JadeState *jade, JadePosition pos, JadeNode *cond, JadeNo
 }
 
 JadeNode *create_until(JadeState *jade, JadePosition pos, JadeNode *cond, JadeNode *body){
-    JadeNode *n = create(jade, JADE_WHILE_NODE, pos);
+    JadeNode *n = create(jade, JADE_UNTIL_NODE, pos);
     n->u.loop.cond = cond;
     n->u.loop.body = body;
     return n;
 }
 
-JadeNode *create_for(JadeState *jade, JadePosition pos, JadeNodeList *vars, JadeNode *range, JadeNode *body){
+JadeNode *create_for(JadeState *jade, JadePosition pos, JadeNode *vars, JadeNode *range, JadeNode *body){
     JadeNode *n = create(jade, JADE_FOR_NODE, pos);
     n->u.for_.variables = vars;
     n->u.for_.range = range;
@@ -132,13 +147,13 @@ JadeNode *create_nil_literal(JadeState *jade, JadePosition pos){
     return create(jade, JADE_NIL_LITERAL_NODE, pos);
 }
 
-JadeNode *create_array_literal(JadeState *jade, JadePosition pos, JadeNodeList *elements){
+JadeNode *create_array_literal(JadeState *jade, JadePosition pos, JadeNode *elements){
     JadeNode *n = create(jade, JADE_ARRAY_LITERAL_NODE, pos);
     n->u.array_literal.elements = elements;
     return n;
 }
 
-JadeNode *create_table_literal(JadeState *jade, JadePosition pos, JadeNodeList *entries){
+JadeNode *create_table_literal(JadeState *jade, JadePosition pos, JadeNode *entries){
     JadeNode *n = create(jade, JADE_TABLE_LITERAL_NODE, pos);
     n->u.table_literal.entries = entries;
     return n;
@@ -151,7 +166,7 @@ JadeNode *create_table_entry(JadeState *jade, JadePosition pos, JadeNode *key, J
     return n;
 }
 
-JadeNode *create_function_literal(JadeState *jade, JadePosition pos, JadeNodeList *params, JadeNode *body){
+JadeNode *create_function_literal(JadeState *jade, JadePosition pos, JadeNode *params, JadeNode *body){
     JadeNode *n = create(jade, JADE_FUNCTION_LITERAL_NODE, pos);
     n->u.function_literal.parameters = params;
     n->u.function_literal.body = body;
@@ -184,7 +199,7 @@ JadeNode *create_let(JadeState *jade, JadePosition pos, JadeNode *name, JadeNode
     return n;
 }
 
-JadeNode *create_call(JadeState *jade, JadePosition pos, JadeNode *fn, JadeNodeList *args){
+JadeNode *create_call(JadeState *jade, JadePosition pos, JadeNode *fn, JadeNode *args){
     JadeNode *n = create(jade, JADE_CALL_NODE, pos);
     n->u.call.function = fn;
     n->u.call.arguments = args;
@@ -210,7 +225,7 @@ JadeNode *create_match(
     JadePosition pos,
     JadeNode *operand,
     JadeNode *variable,
-    JadeNodeList *clauses,
+    JadeNode *clauses,
     JadeNode *otherwise
 ){
     JadeNode *n = create(jade, JADE_MATCH_NODE, pos);
@@ -221,7 +236,7 @@ JadeNode *create_match(
     return n;
 }
 
-JadeNode *create_match_clause(JadeState *jade, JadePosition pos, JadeNodeList *pattern, JadeNode *body){
+JadeNode *create_match_clause(JadeState *jade, JadePosition pos, JadeNode *pattern, JadeNode *body){
     JadeNode *n = create(jade, JADE_MATCH_CLAUSE_NODE, pos);
     n->u.match_clause.pattern = pattern;
     n->u.match_clause.body = body;
@@ -234,10 +249,10 @@ void dispose_node(JadeNode *n){
     free(n);
 }
 
-static void dump_nodelist(JadeNodeList *list, FILE *fp, int lv){
-    JadeNodeList *pos;
-    for (pos = list; pos != NULL; pos = pos->next) {
-        dump_node(pos->node, fp, lv);
+static void dump_nodelist(JadeNode *list, FILE *fp, int lv){
+    JadeNode *pos;
+    for (pos = list; pos != NULL; pos = pos->u.list.next) {
+        dump_node(pos->u.list.node, fp, lv);
     }
 }
 

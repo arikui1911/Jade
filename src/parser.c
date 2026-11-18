@@ -20,11 +20,11 @@ void jade_parser_dispose(JadeParser *p){
     if (p == NULL) return;
 
     if (p->toplevel != NULL) {
-        JadeNodeList *pos, *next;
+        JadeNode *pos, *next;
 
         for (pos = p->toplevel->u.block.statements; pos != NULL; pos = next) {
-            next = pos->next;
-            dispose_node(pos->node);
+            next = pos->u.list.next;
+            dispose_node(pos->u.list.node);
         }
     }
 
@@ -207,25 +207,20 @@ static Token must_be_eos(JadeParser *p){
 
 static JadeNode *parse_statement(JadeParser *);
 
-static JadeNodeList *parse_statements(JadeParser *p, TokenType term, Token *dest){
-    JadeNodeList head = {NULL, NULL};
-    JadeNodeList *pos = &head;
-    JadeNode *s;
-
+static JadeNode *parse_statements(JadeParser *p, TokenType term, Token *dest){
+    JadeNode *s, *list = NULL;
+    
     while (!expect(p, term, dest)) {
         s = parse_statement(p);
         if (s == NULL) continue;
-        pos->next = jmalloc(p->jade, sizeof(JadeNodeList));
-        pos = pos->next;
-        pos->next = NULL;
-        pos->node = s;
+        list = create_list_entry(p->jade, list, s);
     }
 
-    return head.next;
+    return list;
 }
 
 static JadeNode *parse_block(JadeParser *p){
-    JadeNodeList *ss;
+    JadeNode *ss;
     Token rc;
     Token lc = must_be(p, TOKEN_LC);
 
@@ -233,23 +228,14 @@ static JadeNode *parse_block(JadeParser *p){
     return create_block(p->jade, between(lc.pos, rc.pos), ss);
 }
 
-static JadeNodeList *alloc_list_entry(JadeState *jade, JadeNode *n){
-    JadeNodeList *x = jmalloc(jade, sizeof(JadeNodeList));
-    x->next = NULL;
-    x->node = n;
-    return x;
-}
-
-static JadeNodeList *parse_comma_list(JadeParser *p, TokenType term, Token *dest, JadeNode *(*f)(JadeParser *)){
-    JadeNodeList head = {NULL, NULL};
-    JadeNodeList *pos = &head;
+static JadeNode *parse_comma_list(JadeParser *p, TokenType term, Token *dest, JadeNode *(*f)(JadeParser *)){
+    JadeNode *list;
     Token t;
 
     if (expect(p, term, dest)) return NULL;
 
     for (;;) {
-        pos->next = alloc_list_entry(p->jade, f(p));
-        pos = pos->next;
+        list = create_list_entry(p->jade, list, f(p));
 
         t = next_token(p);
         if (t.type == term) {
@@ -265,12 +251,12 @@ static JadeNodeList *parse_comma_list(JadeParser *p, TokenType term, Token *dest
     }
 
     if (dest != NULL) *dest = t;
-    return head.next;
+    return list;
 }
 
 static void do_parse(JadeParser *p){
     Token eof;
-    JadeNodeList *ss;
+    JadeNode *ss;
     JadePosition pos = {1, 1, 1, 1};
 
     ss = parse_statements(p, TOKEN_EOF, &eof);
@@ -407,8 +393,7 @@ static JadeNode *parse_for_var(JadeParser *p){
 }
 
 static JadeNode *parse_for(JadeParser *p, Token kw){
-    JadeNodeList *vars;
-    JadeNode *range, *body;
+    JadeNode *vars, *range, *body;
     Token t;
 
     vars = parse_comma_list(p, TOKEN_COLON, &t, parse_for_var);
@@ -561,7 +546,7 @@ static JadeNode *parse_array_element(JadeParser *p){
 }
 
 static JadeNode *parse_array_literal(JadeParser *p, Token lb){
-    JadeNodeList *elems;
+    JadeNode *elems;
     Token t;
 
     elems = parse_comma_list(p, TOKEN_RB, &t, parse_array_element);
@@ -577,7 +562,7 @@ static JadeNode *parse_table_entry(JadeParser *p){
 }
 
 static JadeNode *parse_table_literal(JadeParser *p, Token lc){
-    JadeNodeList *entries;
+    JadeNode *entries;
     Token t;
 
     entries = parse_comma_list(p, TOKEN_RC, &t, parse_table_entry);
@@ -590,7 +575,7 @@ static JadeNode *parse_parameter(JadeParser *p){
 }
 
 static JadeNode *parse_function_literal(JadeParser *p, Token arrow){
-    JadeNodeList *params = NULL;
+    JadeNode *params = NULL;
     JadeNode *body;
 
     if (expect(p, TOKEN_LP, NULL)) {
@@ -624,7 +609,7 @@ static JadeNode *parse_match_pattern_expression(JadeParser *p){
 }
 
 static JadeNode *parse_match_clause(JadeParser *p, Token kw){
-    JadeNodeList *xs;
+    JadeNode *xs;
     JadeNode *body;
 
     xs = parse_comma_list(p, TOKEN_COLON, NULL, parse_match_pattern_expression);
@@ -634,8 +619,7 @@ static JadeNode *parse_match_clause(JadeParser *p, Token kw){
 }
 
 static JadeNode *parse_match(JadeParser *p, Token kw){
-    JadeNodeList head = {NULL, NULL};
-    JadeNodeList *cur = &head;
+    JadeNode *list = NULL;
     JadeNode *operand, *variable = NULL, *otherwise = NULL;
     JadePosition pos;
 
@@ -653,8 +637,7 @@ static JadeNode *parse_match(JadeParser *p, Token kw){
         Token t = next_token(p);
         switch (t.type) {
         case TOKEN_WHEN:
-            cur->next = alloc_list_entry(p->jade, parse_match_clause(p, t));
-            cur = cur->next;
+            list = create_list_entry(p->jade, list, parse_match_clause(p, t));
             break;
         case TOKEN_ELSE:
             must_be(p, TOKEN_COLON);
@@ -669,7 +652,7 @@ static JadeNode *parse_match(JadeParser *p, Token kw){
     }
 
 END:
-    return create_match(p->jade, pos, operand, variable, head.next, otherwise);
+    return create_match(p->jade, pos, operand, variable, list, otherwise);
 }
 
 static JadeNode *parse_prefixed(JadeParser *p, Token op){
@@ -783,7 +766,7 @@ static JadeNode *parse_argument(JadeParser *p){
 }
 
 static JadeNode *parse_call(JadeParser *p, JadeNode *fn, Token lp){
-    JadeNodeList *args;
+    JadeNode *args;
     Token t;
 
     args = parse_comma_list(p, TOKEN_RP, &t, parse_argument);

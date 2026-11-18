@@ -10,6 +10,7 @@ typedef struct {
 } JadePosition;
 
 typedef enum {
+    JADE_LIST_NODE,
     JADE_BLOCK_NODE,
     JADE_EXPRESSION_STATEMENT_NODE,
     JADE_DEF_NODE,
@@ -57,15 +58,13 @@ typedef enum {
 
 typedef struct JadeNode JadeNode;
 
-typedef struct JadeNodeList JadeNodeList;
-
-struct JadeNodeList {
-    JadeNodeList *next;
+typedef struct {
+    JadeNode *next;
     JadeNode *node;
-};
+} JadeListNodeAttributes;
 
 typedef struct {
-    JadeNodeList *statements;
+    JadeNode *statements;
 } JadeBlockNodeAttributes;
 
 typedef struct {
@@ -89,7 +88,7 @@ typedef struct {
 } JadeLoopNodeAttributes;
 
 typedef struct {
-    JadeNodeList *variables;
+    JadeNode *variables;
     JadeNode *range;
     JadeNode *body;
 } JadeForNodeAttributes;
@@ -126,11 +125,11 @@ typedef struct {
 } JadeBooleanLiteralNodeAttributes;
 
 typedef struct {
-    JadeNodeList *elements;
+    JadeNode *elements;
 } JadeArrayLiteralNodeAttributes;
 
 typedef struct {
-    JadeNodeList *entries;
+    JadeNode *entries;
 } JadeTableLiteralNodeAttributes;
 
 typedef struct {
@@ -139,7 +138,7 @@ typedef struct {
 } JadeTableEntryNodeAttributes;
 
 typedef struct {
-    JadeNodeList *parameters;
+    JadeNode *parameters;
     JadeNode *body;
 } JadeFunctionLiteralNodeAttributes;
 
@@ -159,7 +158,7 @@ typedef struct {
 
 typedef struct {
     JadeNode *function;
-    JadeNodeList *arguments;
+    JadeNode *arguments;
 } JadeCallNodeAttributes;
 
 typedef struct {
@@ -175,12 +174,12 @@ typedef struct {
 typedef struct {
     JadeNode *operand;
     JadeNode *variable;
-    JadeNodeList *clauses;
+    JadeNode *clauses;
     JadeNode *otherwise;
 } JadeMatchNodeAttributes;
 
 typedef struct {
-    JadeNodeList *pattern;
+    JadeNode *pattern;
     JadeNode *body;
 } JadeMatchClauseNodeAttributes;
 
@@ -188,6 +187,7 @@ struct JadeNode {
     JadePosition pos;
     JadeNodeType type;
     union {
+        JadeListNodeAttributes list;
         JadeBlockNodeAttributes block;
         JadeExpressionStatementNodeAttributes expression_statement;
         JadeDefNodeAttributes def;

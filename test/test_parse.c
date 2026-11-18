@@ -21,7 +21,7 @@ void tearDown(void) {
 }
 
 static JadeNode *extract_1statement(const char *src){
-    JadeNodeList *pos;
+    JadeNode *pos;
 
     jade_parser_parse_string(g_fixture.p, "test.jd", 1, src);
 
@@ -30,9 +30,9 @@ static JadeNode *extract_1statement(const char *src){
 
     pos = g_fixture.jade->toplevel->u.block.statements;
     TEST_ASSERT_NOT_NULL(pos);
-    TEST_ASSERT_NULL(pos->next);
-    TEST_ASSERT_NOT_NULL(pos->node);
-    return pos->node;
+    TEST_ASSERT_NULL(pos->u.list.next);
+    TEST_ASSERT_NOT_NULL(pos->u.list.node);
+    return pos->u.list.node;
 }
 
 void test_def(void){
@@ -213,23 +213,23 @@ void test_parse_grouped(void){
 }
 
 void test_parse_array_literal(void){
-    JadeNodeList *pos;
+    JadeNode *pos;
     JadeNode *n = extract_1expression("[1, 2, 3]");
     TEST_ASSERT_EQUAL(JADE_ARRAY_LITERAL_NODE, n->type);
 
     pos = n->u.array_literal.elements;
-    TEST_ASSERT_EQUAL(JADE_INT_LITERAL_NODE, pos->node->type);
-    TEST_ASSERT_EQUAL_INT(1, pos->node->u.int_literal.value);
+    TEST_ASSERT_EQUAL(JADE_INT_LITERAL_NODE, pos->u.list.node->type);
+    TEST_ASSERT_EQUAL_INT(1, pos->u.list.node->u.int_literal.value);
 
-    pos = pos->next;
-    TEST_ASSERT_EQUAL(JADE_INT_LITERAL_NODE, pos->node->type);
-    TEST_ASSERT_EQUAL_INT(2, pos->node->u.int_literal.value);
+    pos = pos->u.list.next;
+    TEST_ASSERT_EQUAL(JADE_INT_LITERAL_NODE, pos->u.list.node->type);
+    TEST_ASSERT_EQUAL_INT(2, pos->u.list.node->u.int_literal.value);
 
-    pos = pos->next;
-    TEST_ASSERT_EQUAL(JADE_INT_LITERAL_NODE, pos->node->type);
-    TEST_ASSERT_EQUAL_INT(3, pos->node->u.int_literal.value);
+    pos = pos->u.list.next;
+    TEST_ASSERT_EQUAL(JADE_INT_LITERAL_NODE, pos->u.list.node->type);
+    TEST_ASSERT_EQUAL_INT(3, pos->u.list.node->u.int_literal.value);
 
-    TEST_ASSERT_NULL(pos->next);
+    TEST_ASSERT_NULL(pos->u.list.next);
 }
 
 void test_parse_array_literal_empty(void){
@@ -239,21 +239,21 @@ void test_parse_array_literal_empty(void){
 }
 
 void test_parse_table_literal(void){
-    JadeNodeList *pos;
+    JadeNode *pos;
 
     JadeNode *n = extract_1expression("{\"x\": 1, \"y\": 2, \"z\": 3}");
     TEST_ASSERT_EQUAL(JADE_TABLE_LITERAL_NODE, n->type);
 
     pos = n->u.table_literal.entries;
-    TEST_ASSERT_EQUAL(JADE_TABLE_ENTRY_NODE, pos->node->type);
+    TEST_ASSERT_EQUAL(JADE_TABLE_ENTRY_NODE, pos->u.list.node->type);
 
-    pos = pos->next;
-    TEST_ASSERT_EQUAL(JADE_TABLE_ENTRY_NODE, pos->node->type);
+    pos = pos->u.list.next;
+    TEST_ASSERT_EQUAL(JADE_TABLE_ENTRY_NODE, pos->u.list.node->type);
 
-    pos = pos->next;
-    TEST_ASSERT_EQUAL(JADE_TABLE_ENTRY_NODE, pos->node->type);
+    pos = pos->u.list.next;
+    TEST_ASSERT_EQUAL(JADE_TABLE_ENTRY_NODE, pos->u.list.node->type);
 
-    TEST_ASSERT_NULL(pos->next);
+    TEST_ASSERT_NULL(pos->u.list.next);
 }
 
 void test_parse_table_literal_empty(void){

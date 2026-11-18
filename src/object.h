@@ -71,7 +71,7 @@ JadeObject *object_new(JadeState *, JadeValueType);
 void object_dispose(JadeObject *);
 void object_mark(JadeObject *);
 
-JadeValue function_new(JadeState *, JadeNodeList *, JadeNode *);
+JadeValue function_new(JadeState *, JadeNode *, JadeNode *);
 
 void string_destroy(JadeObject *);
 void array_destroy(JadeObject *);

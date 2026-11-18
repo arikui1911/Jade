@@ -8,11 +8,11 @@
 #include <setjmp.h>
 
 static JadeValue eval_block(JadeState *jade, JadeNode *x, Environment *env){
-    JadeNodeList *pos;
+    JadeNode *pos;
     JadeValue r = jade_nil_value();
 
-    for (pos = x->u.block.statements; pos != NULL; pos = pos->next) {
-        r = eval(jade, pos->node, env);
+    for (pos = x->u.block.statements; pos != NULL; pos = pos->u.list.next) {
+        r = eval(jade, pos->u.list.node, env);
     }
 
     return r;
@@ -101,26 +101,26 @@ static JadeValue eval_let(JadeState *jade, JadeNode *x, Environment *env){
 }
 
 static JadeValue eval_array_literal(JadeState *jade, JadeNode *x, Environment *env){
-    JadeNodeList *pos;
+    JadeNode *pos;
     JadeValue a = jade_array_new(jade);
 
-    for (pos = x->u.array_literal.elements; pos != NULL; pos = pos->next) {
-        jade_array_push(jade, a, eval(jade, pos->node, env));
+    for (pos = x->u.array_literal.elements; pos != NULL; pos = pos->u.list.next) {
+        jade_array_push(jade, a, eval(jade, pos->u.list.node, env));
     }
 
     return a;
 }
 
 static JadeValue eval_table_literal(JadeState *jade, JadeNode *x, Environment *env){
-    JadeNodeList *pos;
+    JadeNode *pos;
     JadeValue t = jade_table_new(jade);
 
-    for (pos = x->u.table_literal.entries; pos != NULL; pos = pos->next) {
+    for (pos = x->u.table_literal.entries; pos != NULL; pos = pos->u.list.next) {
         JadeValue k, v;
 
-        assert(pos->node->type == JADE_TABLE_ENTRY_NODE);
-        k = eval(jade, pos->node->u.table_entry.key, env);
-        v = eval(jade, pos->node->u.table_entry.value, env);
+        assert(pos->u.list.node->type == JADE_TABLE_ENTRY_NODE);
+        k = eval(jade, pos->u.list.node->u.table_entry.key, env);
+        v = eval(jade, pos->u.list.node->u.table_entry.value, env);
         jade_table_store(jade, t, k, v);
     }
 
@@ -355,7 +355,7 @@ static JadeValue eval_store(JadeState *jade, JadeNode *x, Environment *env){
 }
 
 static JadeValue eval_call(JadeState *jade, JadeNode *x, Environment *env){
-    JadeNodeList *pos;
+    JadeNode *pos;
     JadeValue fn, ret = jade_undefined_value();
     Environment *fe;
     int i;
@@ -364,8 +364,8 @@ static JadeValue eval_call(JadeState *jade, JadeNode *x, Environment *env){
     vector_init(args);
 
     fn = eval(jade, x->u.call.function, env);
-    for (pos = x->u.call.arguments; pos != NULL; pos = pos->next) {
-        vector_push(jade, args, JadeValue, eval(jade, pos->node, env));
+    for (pos = x->u.call.arguments; pos != NULL; pos = pos->u.list.next) {
+        vector_push(jade, args, JadeValue, eval(jade, pos->u.list.node, env));
     }
 
     if (fn.type != JADE_FUNCTION) {
