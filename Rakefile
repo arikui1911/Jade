@@ -60,7 +60,7 @@ def parse_test_path(path)
     test:   File.join(dir, "#{base}"),
     runner: File.join(dir, "run_#{topic}"),
     topic:  topic,
-    result: File.join(dir, base),
+    result: File.join(dir, "#{base}.out"),
   }
 end
 

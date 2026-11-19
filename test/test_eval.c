@@ -45,7 +45,7 @@ void test_eval_call(void){
         "    return x + y\n"    \
         "  }\n"                 \
         "}\n"                   \
-        "print(sum(10, 20))\n"       \
+        "print(sum(10, 20))\n"  \
     "";
 
     jade_parser_parse_string(g_fixture.p, "test.jd", 1, src);
